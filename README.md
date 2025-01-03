@@ -1,0 +1,2 @@
+# SIHOA
+SImple HOme Automation
