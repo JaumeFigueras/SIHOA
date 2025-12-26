@@ -125,9 +125,7 @@ class Device(Base):
     zigbee_manufacturer: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     # Lifecycle timestamps.
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __init__(self, **kwargs: Unpack[DeviceParams]) -> None:
