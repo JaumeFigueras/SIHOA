@@ -1,2 +1,8 @@
+# Main libs
 SQLAlchemy>=2.0.45
 paho-mqtt>=2.1.0
+python-dateutil>=2.9.0
+# Test libs
+pytest>=9.0.2
+pytest-cov>=7.0.0
+pytest-mqtt>=0.6.2
