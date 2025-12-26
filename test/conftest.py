@@ -6,5 +6,5 @@ from pathlib import Path
 test_folder: Path = Path(__file__).parent
 
 pytest_plugins = [
-    'fixtures.database',
+    'test.fixtures.database',
 ]
