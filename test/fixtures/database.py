@@ -33,20 +33,10 @@ def db_session(engine):
     Creates a new session for a test, wrapped in a transaction
     that is always rolled back.
     """
-    # 1. Connect to the database
-    connection = engine.connect()
 
-    # 2. Begin an outer transaction
-    transaction = connection.begin()
+    with engine.begin() as conn:
+        savepoint = conn.begin_nested()
+        session = Session(bind=conn)
+        yield session
+        savepoint.rollback()
 
-    # 3. Bind the session to the connection
-    # join_transaction_mode="create_savepoint" ensures that session.commit()
-    # inside your code only ends a SAVEPOINT, not the real transaction.
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-
-    yield session
-
-    # 4. Teardown: Roll back everything (including internal commits)
-    session.close()
-    transaction.rollback()
-    connection.close()
