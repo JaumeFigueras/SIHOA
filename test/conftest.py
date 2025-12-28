@@ -7,4 +7,6 @@ test_folder: Path = Path(__file__).parent
 
 pytest_plugins = [
     'test.fixtures.database',
+    'test.fixtures.mqtt',
+    'test.fixtures.mosquitto',
 ]
