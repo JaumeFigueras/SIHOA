@@ -26,17 +26,17 @@ $ python -m src.apps.import.import_devices --host localhost --port 1883 \\
 """
 
 
-import argparse  # pragma: no cover
-import sys  # pragma: no cover
-import json  # pragma: no cover
-import time  # pragma: no cover
-import datetime  # pragma: no cover
-import dateutil  # pragma: no cover
-import paho.mqtt.client as mqtt  # pragma: no cover
+import argparse
+import sys
+import json
+import time
+import datetime
+import dateutil
+import paho.mqtt.client as mqtt
 
 from datetime import timezone
-from sqlalchemy import create_engine  # pragma: no cover
-from sqlalchemy import select  # pragma: no cover
+from sqlalchemy import create_engine
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -118,7 +118,7 @@ def _parse_date_maybe(value: Any) -> Optional[datetime.date]:
     Parameters
     ----------
     value : Any
-        Raw value (string/number/date/datetime) potentially representing a date.
+        Raw value (string/date/datetime) potentially representing a date.
 
     Returns
     -------
@@ -131,8 +131,12 @@ def _parse_date_maybe(value: Any) -> Optional[datetime.date]:
         return value
     if isinstance(value, datetime.datetime):
         return value.date()
+    # Only attempt to parse strings; ignore other types (e.g., int/float/objects)
+    if not isinstance(value, str):
+        return None
+
     try:
-        return dateutil.parser.parse(str(value)).date()
+        return dateutil.parser.parse(value.strip()).date()
     except Exception:
         return None
 
@@ -186,9 +190,6 @@ def store_devices_to_db(session: Session, devices: list[dict[str, Any]]) -> Tupl
         # Skip entries missing essential identifiers.
         if not ieee_address or not friendly_name:
             continue
-
-        active_ieee.add(ieee_address)
-
         # Fetch existing device by primary key (ieee_address)
         device = session.get(Device, ieee_address)
         if device is None:
@@ -197,6 +198,7 @@ def store_devices_to_db(session: Session, devices: list[dict[str, Any]]) -> Tupl
         else:
             # Ensure friendly name stays in sync if it changed
             device.friendly_name = friendly_name
+        active_ieee.add(ieee_address)
 
         # Optional fields
         net_addr = d.get("network_address") or d.get("networkAddress")
