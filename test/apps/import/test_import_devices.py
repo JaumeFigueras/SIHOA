@@ -8,6 +8,7 @@ import src.apps.imports.import_devices as mod
 
 from datetime import date
 from datetime import datetime
+from datetime import timezone
 
 from typing import Any
 from typing import Tuple
@@ -273,7 +274,7 @@ def test_parse_date_maybe_datetime_returns_date() -> None:
     -------
     None
     """
-    dt: datetime = datetime(2024, 12, 25, 10, 30, 45, tzinfo=timezone.utc)
+    dt: datetime = datetime(2024, 12, 25, 10, 30, 45)
     got: Optional[date] = mod._parse_date_maybe(dt)
     assert got == date(2024, 12, 25)
 
