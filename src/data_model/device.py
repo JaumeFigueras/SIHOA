@@ -23,14 +23,28 @@ Notes
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import NotRequired, TypedDict, Unpack
+import json
+import paho.mqtt.client as mqtt
 
-from sqlalchemy import CheckConstraint, Date, DateTime, String, Integer, func
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import date
+from datetime import datetime
+from datetime import timezone
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import String
+from sqlalchemy import Integer
+from sqlalchemy import func
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
-from . import Base
+from src.data_model import Base
 
+from typing import NotRequired
+from typing import TypedDict
+from typing import Unpack
+from typing import Dict
+from typing import Any
 
 class DeviceParams(TypedDict):
     """Keyword parameters accepted by the Device constructor.
@@ -128,6 +142,13 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(timezone.utc))
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Inheritance
+    type: Mapped[str]
+    __mapper_args__ = {
+        "polymorphic_on": "type",
+        "polymorphic_identity": "device",
+    }
+
     def __init__(self, **kwargs: Unpack[DeviceParams]) -> None:
         """Initialize a Device instance from keyword parameters.
 
@@ -159,3 +180,8 @@ class Device(Base):
             f"Device(ieee_address={getattr(self, 'ieee_address', None)!r}, "
             f"friendly_name={getattr(self, 'friendly_name', None)!r})"
         )
+
+
+    def publish(self, mqtt_client: mqtt.Client, base_topic: str, payload: Dict[str, Any]) -> None:
+        topic = f"{base_topic}/{self.friendly_name}/set"
+        mqtt_client.publish(topic, json.dumps(payload), qos=0, retain=False)
