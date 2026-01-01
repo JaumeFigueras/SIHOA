@@ -23,7 +23,6 @@ Notes
 
 from __future__ import annotations
 
-import json
 import paho.mqtt.client as mqtt
 
 from datetime import date
@@ -43,8 +42,8 @@ from src.data_model import Base
 from typing import NotRequired
 from typing import TypedDict
 from typing import Unpack
-from typing import Dict
-from typing import Any
+from typing import Union
+from typing import ClassVar
 
 class DeviceParams(TypedDict):
     """Keyword parameters accepted by the Device constructor.
@@ -74,6 +73,7 @@ class DeviceParams(TypedDict):
     """
     ieee_address: str
     friendly_name: str
+    mqtt_client: mqtt.Client
     network_address: NotRequired[int]
     firmware_build_date: NotRequired[date]
     firmware_version: NotRequired[str]
@@ -149,6 +149,9 @@ class Device(Base):
         "polymorphic_identity": "device",
     }
 
+    # Class attributes
+    mqtt_client: ClassVar[Union[mqtt.Client, None]] = None
+
     def __init__(self, **kwargs: Unpack[DeviceParams]) -> None:
         """Initialize a Device instance from keyword parameters.
 
@@ -164,7 +167,11 @@ class Device(Base):
         - Unknown keys are safely ignored to prevent accidental attribute creation.
         """
         super().__init__()
-        for key, value in kwargs.items():
+        for key, value in kwargs.items(): # type: ignore
+            if key == 'mqtt_client':
+                if Device.mqtt_client is None:
+                    Device.mqtt_client = value
+                    continue
             if hasattr(self, key):
                 setattr(self, key, value)
 
@@ -180,8 +187,3 @@ class Device(Base):
             f"Device(ieee_address={getattr(self, 'ieee_address', None)!r}, "
             f"friendly_name={getattr(self, 'friendly_name', None)!r})"
         )
-
-
-    def publish(self, mqtt_client: mqtt.Client, base_topic: str, payload: Dict[str, Any]) -> None:
-        topic = f"{base_topic}/{self.friendly_name}/set"
-        mqtt_client.publish(topic, json.dumps(payload), qos=0, retain=False)
