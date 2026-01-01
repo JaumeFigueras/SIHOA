@@ -19,6 +19,9 @@ Notes
 - Two lifecycle timestamps are included:
   - created_at: when the device record was created in the database.
   - retired_at: when the device was marked as no longer available (optional).
+- The Device class introduces a class attribute `mqtt_client` to share a
+  global Paho MQTT Client instance among all devices. This allows for simplified
+  communication with Zigbee2MQTT when managing devices.
 """
 
 from __future__ import annotations
@@ -55,6 +58,8 @@ class DeviceParams(TypedDict):
         This is the primary key of the model.
     friendly_name : str
         Human-friendly device name. Must be unique.
+    mqtt_client : paho.mqtt.client.Client
+        Shared Paho MQTT client instance associated with all devices.
     network_address : NotRequired[int]
         16-bit Zigbee network (short) address. Optional and may change over time.
     firmware_build_date : NotRequired[date]
@@ -92,6 +97,8 @@ class Device(Base):
         Primary key. Unique 64-bit Zigbee IEEE (extended) address as a string.
     friendly_name : str
         Human-friendly unique name for the device.
+    mqtt_client : ClassVar[Union[paho.mqtt.client.Client, None]]
+        Shared MQTT client instance for Zigbee2MQTT communication.
     network_address : int or None
         16-bit Zigbee network (short) address. May change due to rejoin/rebind.
     firmware_build_date : date or None
@@ -108,6 +115,20 @@ class Device(Base):
         Timestamp when the device row was created in the database (UTC recommended).
     retired_at : datetime or None
         Timestamp when the device was marked as no longer available.
+    type : str
+        Device type for SQLAlchemy polymorphic model inheritance.
+
+    Class Attributes
+    -----------------
+    mqtt_client : ClassVar[Union[paho.mqtt.client.Client, None]]
+        Shared MQTT client instance to be used by all devices.
+
+    Notes
+    -----
+    - The `mqtt_client` class variable is set by passing an MQTT client instance
+      to the constructor of the first Device created (or any subclass).
+      Subsequent device instances will ignore the `mqtt_client` parameter
+      unless explicitly modified.
     """
 
     __tablename__ = "device"
@@ -139,8 +160,8 @@ class Device(Base):
     zigbee_manufacturer: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     # Lifecycle timestamps.
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(timezone.utc))
-    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.now(timezone.utc))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
 
     # Inheritance
     type: Mapped[str]
@@ -162,6 +183,9 @@ class Device(Base):
 
         Notes
         -----
+        - The MQTT client instance, passed via `mqtt_client` when creating the first
+          device, is stored as a class attribute (`Device.mqtt_client`) to ensure shared
+          usage across all device instances.
         - `created_at` is set automatically by the database default and should
           not be provided during construction in typical usage.
         - Unknown keys are safely ignored to prevent accidental attribute creation.
