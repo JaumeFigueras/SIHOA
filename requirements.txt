@@ -2,6 +2,7 @@
 SQLAlchemy>=2.0.45
 paho-mqtt>=2.1.0
 python-dateutil>=2.9.0
+astral>=3.2
 # Test libs
 pytest>=9.0.2
 pytest-cov>=7.0.0

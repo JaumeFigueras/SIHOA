@@ -26,6 +26,7 @@ Notes
 
 from __future__ import annotations
 
+import json
 import paho.mqtt.client as mqtt
 
 from datetime import date
@@ -47,6 +48,8 @@ from typing import TypedDict
 from typing import Unpack
 from typing import Union
 from typing import ClassVar
+from typing import Optional
+from queue import Queue
 
 class DeviceParams(TypedDict):
     """Keyword parameters accepted by the Device constructor.
@@ -78,7 +81,7 @@ class DeviceParams(TypedDict):
     """
     ieee_address: str
     friendly_name: str
-    mqtt_client: mqtt.Client
+    publish_queue: Queue
     network_address: NotRequired[int]
     firmware_build_date: NotRequired[date]
     firmware_version: NotRequired[str]
@@ -97,8 +100,6 @@ class Device(Base):
         Primary key. Unique 64-bit Zigbee IEEE (extended) address as a string.
     friendly_name : str
         Human-friendly unique name for the device.
-    mqtt_client : ClassVar[Union[paho.mqtt.client.Client, None]]
-        Shared MQTT client instance for Zigbee2MQTT communication.
     network_address : int or None
         16-bit Zigbee network (short) address. May change due to rejoin/rebind.
     firmware_build_date : date or None
@@ -118,17 +119,6 @@ class Device(Base):
     type : str
         Device type for SQLAlchemy polymorphic model inheritance.
 
-    Class Attributes
-    -----------------
-    mqtt_client : ClassVar[Union[paho.mqtt.client.Client, None]]
-        Shared MQTT client instance to be used by all devices.
-
-    Notes
-    -----
-    - The `mqtt_client` class variable is set by passing an MQTT client instance
-      to the constructor of the first Device created (or any subclass).
-      Subsequent device instances will ignore the `mqtt_client` parameter
-      unless explicitly modified.
     """
 
     __tablename__ = "device"
@@ -170,9 +160,7 @@ class Device(Base):
         "polymorphic_identity": "device",
     }
 
-    # Class attributes
-    mqtt_client: ClassVar[Union[mqtt.Client, None]] = None
-
+    publish_queue: ClassVar[Queue]
     def __init__(self, **kwargs: Unpack[DeviceParams]) -> None:
         """Initialize a Device instance from keyword parameters.
 
@@ -192,10 +180,9 @@ class Device(Base):
         """
         super().__init__()
         for key, value in kwargs.items(): # type: ignore
-            if key == 'mqtt_client':
-                if Device.mqtt_client is None:
-                    Device.mqtt_client = value
-                    continue
+            if key == 'publish_queue':
+                Device.publish_queue = value
+                continue
             if hasattr(self, key):
                 setattr(self, key, value)
 
