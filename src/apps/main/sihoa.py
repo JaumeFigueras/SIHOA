@@ -5,15 +5,12 @@ import argparse
 import sys
 import queue
 import logging
-import json
 import time
 import datetime
-import dateutil
 import paho.mqtt.client as mqtt
 
 from datetime import timezone
 from sqlalchemy import create_engine
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from logging.handlers import RotatingFileHandler
