@@ -32,11 +32,13 @@ from typing import Tuple
 
 def main(manager: ClientManager, inbound_queue: queue.Queue, outbound_queue: queue.Queue, session: Session, logger: Logger) -> None:
     canoves = Observer(latitude=41.694386, longitude=2.352831, elevation=360)
-    porta_exterior = Light(ieee_address='d44867fffed60815', friendly_name='porta_exterior', publish_queue=outbound_queue)
-    pilar_dret = Light(ieee_address='f84477fffef797a4', friendly_name='pilar_dret', publish_queue=outbound_queue)
-    pilar_esquerre = Light(ieee_address='f84477fffee97eda', friendly_name='pilar_esquerre', publish_queue=outbound_queue)
+    exterior_porta = Light(ieee_address='d44867fffed60815', friendly_name='exterior_porta', publish_queue=outbound_queue, default_brightness=254, default_color_temp=250)
+    exterior_garatge = Light(ieee_address='08fd52fffe0f4080', friendly_name='exterior_garatge', publish_queue=outbound_queue, default_brightness=169, default_color_temp=250)
+    exterior_habitacions = Light(ieee_address='180df9fffe88575d', friendly_name='exterior_habitacions', publish_queue=outbound_queue, default_brightness=254, default_color_temp=250)
+    pilar_dret = Light(ieee_address='f84477fffef797a4', friendly_name='pilar_dret', publish_queue=outbound_queue, default_brightness=128, default_color_temp=370)
+    pilar_esquerre = Light(ieee_address='f84477fffee97eda', friendly_name='pilar_esquerre', publish_queue=outbound_queue, default_brightness=128, default_color_temp=370)
     endoll_aeri_exterior = Plug(ieee_address="a4c1388ae37c8a71", friendly_name="endoll_aeri_exterior", publish_queue=outbound_queue)
-    llums: List[Light] = [porta_exterior, pilar_dret, pilar_esquerre, endoll_aeri_exterior]
+    llums: List[Light] = [exterior_porta, pilar_dret, pilar_esquerre, endoll_aeri_exterior, exterior_garatge, exterior_habitacions]
     zigbee_topic = 'zigbee_canoves'
     for llum in llums:
         manager.register(f"{zigbee_topic}/{llum.friendly_name}/availability", llum.on_online)
@@ -67,7 +69,7 @@ def main(manager: ClientManager, inbound_queue: queue.Queue, outbound_queue: que
         canoves_sun_today = sun(canoves, date=today)
         sunrise = canoves_sun_today['sunrise']
         sunset = canoves_sun_today['sunset']
-        llums_sol: List[Light] = [porta_exterior, pilar_dret, pilar_esquerre, endoll_aeri_exterior]
+        llums_sol: List[Light] = [exterior_porta, pilar_dret, pilar_esquerre, endoll_aeri_exterior]
         night = (today >= sunset) or (today < sunrise)
         for llum in llums_sol:
             if night:
@@ -78,16 +80,26 @@ def main(manager: ClientManager, inbound_queue: queue.Queue, outbound_queue: que
                 if llum.online:
                     if llum.on:
                         llum.off = True
-        elements_sunset_time = []
-        for element in elements_sunset_time:
-            if night and today < datetime.datetime(today.year, today.month, today.day + 1, 0, 5, 0, tzinfo=cet):
-                if element.online:
-                    if element.off:
-                        element.on = True
+        llums_hora: List[Light] = [exterior_habitacions, exterior_garatge]
+        turn_off_time = datetime.datetime.now(cet)
+        turn_off_time = datetime.datetime(year=turn_off_time.year, month=turn_off_time.month, day=turn_off_time.day, hour=4, minute=0, second=0, tzinfo=cet)
+        if turn_off_time > sunset:
+            # SCENARIO: Off-time is before midnight (e.g., 11 PM)
+            # The lights must be AFTER sunset AND BEFORE the off-time.
+            should_be_on = (today >= sunset) and (today < turn_off_time)
+        else:
+            # SCENARIO: Off-time is after midnight (e.g., 4 AM)
+            # The lights are on if it's late at night OR very early morning.
+            should_be_on = (today >= sunset) or (today < turn_off_time)
+        for llum in llums_hora:
+            if should_be_on:
+                if llum.online:
+                    if llum.off:
+                        llum.on = True
             else:
-                if element.online:
-                    if element.on:
-                        element.off = True
+                if llum.online:
+                    if llum.on:
+                        llum.off = True
 
         time.sleep(0.3)
 

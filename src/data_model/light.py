@@ -33,6 +33,9 @@ class Light(Actuator):
         self._power_on_behavior: Union[str, None] = None
         self._default_power_on_behavior: Union[str, None] = None
         self._color_temp_startup: Union[int, None] = None
+        for key, value in kwargs.items():  # type: ignore
+            if hasattr(self, '_' + key):
+                setattr(self, '_' + key, value)
 
     def on_online(self, data: Dict[str, Any]) -> None:
         super().on_online(data)
@@ -49,10 +52,16 @@ class Light(Actuator):
         color_temp_startup: str = data.get('color_temp_startup', None)
         if brightness is not None:
             self._brightness = int(brightness)
+            if self._default_brightness is not None:
+                if self._brightness != self._default_brightness:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'brightness': self._default_brightness, "transition": 0}})
         if color_mode is not None:
             self._color_mode = color_mode
         if color_temp is not None:
             self._color_temp = int(color_temp)
+            if self._default_color_temp is not None:
+                if self._color_temp != self._default_color_temp:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'color_temp': self._default_color_temp, "transition": 0}})
         if link_quality is not None:
             self._link_quality = int(link_quality)
         if power_on_behavior is not None:
@@ -65,6 +74,10 @@ class Light(Actuator):
         if not self._pending_state:
             if value:
                 Device.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'state': "ON", "transition": 0}})
+                if self._default_brightness is not None:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'brightness': self._default_brightness, "transition": 0}})
+                if self._default_color_temp is not None:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'color_temp': self._default_color_temp, "transition": 0}})
             else:
                 Device.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'state': "OFF", "transition": 0}})
             Device.publish_queue.put({'topic': self.friendly_name + '/get', 'payload': {'state': ""}})
@@ -77,5 +90,11 @@ class Light(Actuator):
                 Device.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'state': "OFF", "transition": 0}})
             else:
                 Device.publish_queue.put({'topic': self.friendly_name + '/set', 'payload': {'state': "ON", "transition": 0}})
+                if self._default_brightness is not None:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set',
+                                            'payload': {'brightness': self._default_brightness, "transition": 0}})
+                if self._default_color_temp is not None:
+                    self.publish_queue.put({'topic': self.friendly_name + '/set',
+                                            'payload': {'color_temp': self._default_color_temp, "transition": 0}})
             Device.publish_queue.put({'topic': self.friendly_name + '/get', 'payload': {'state': ""}})
             self._pending_state = True
