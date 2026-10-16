@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 import sys
 import queue
+import signal
 import logging
 import time
 import datetime
@@ -104,13 +106,18 @@ def main(manager: ClientManager, inbound_queue: queue.Queue, outbound_queue: que
 if __name__ == "__main__":  # pragma: no cover
     # Config the program arguments
     parser = argparse.ArgumentParser(description="SImple HOme Automation application")
-    parser.add_argument('-d', '--database', help='SQLite database file', required=False, default=None)
-    parser.add_argument("-H", "--host", default="localhost", help="MQTT broker host (default: localhost)")
-    parser.add_argument("-p", "--port", type=int, default=1883, help="MQTT broker port (default: 1883)")
-    parser.add_argument("-u", "--username", default=None, help="MQTT username (optional)")
-    parser.add_argument("-P", "--password", default=None, help="MQTT password (optional)")
-    parser.add_argument('-l', '--log-file', help='File to log progress or errors', required=False)
+    # Every option can also come from a SIHOA_* environment variable (the systemd service loads them from .env).
+    # An explicit command line flag wins over the environment.
+    parser.add_argument('-d', '--database', help='SQLite database file', required=False, default=os.environ.get('SIHOA_DATABASE') or None)
+    parser.add_argument("-H", "--host", default=os.environ.get('SIHOA_MQTT_HOST') or "localhost", help="MQTT broker host (default: localhost)")
+    parser.add_argument("-p", "--port", type=int, default=os.environ.get('SIHOA_MQTT_PORT') or 1883, help="MQTT broker port (default: 1883)")
+    parser.add_argument("-u", "--username", default=os.environ.get('SIHOA_MQTT_USERNAME') or None, help="MQTT username (optional)")
+    parser.add_argument("-P", "--password", default=os.environ.get('SIHOA_MQTT_PASSWORD') or None, help="MQTT password (optional)")
+    parser.add_argument('-l', '--log-file', help='File to log progress or errors', required=False, default=os.environ.get('SIHOA_LOG_FILE') or None)
     args = parser.parse_args()
+
+    # systemd stops the service with SIGTERM: turn it into SystemExit so the finally block disconnects cleanly
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
     mqtt_logger = logging.getLogger(__name__)
     if args.log_file is not None:

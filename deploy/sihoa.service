@@ -1,0 +1,20 @@
+# systemd unit for SIHOA. Do not copy this file by hand: deploy/install-service.sh fills in the @...@ placeholders
+# and installs it as /etc/systemd/system/sihoa.service. The settings live in @REPO_DIR@/.env (see .env.example).
+
+[Unit]
+Description=SIHOA - SImple HOme Automation
+Wants=network-online.target mosquitto.service
+After=network-online.target mosquitto.service zigbee2mqtt.service
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@REPO_DIR@
+EnvironmentFile=@REPO_DIR@/.env
+ExecStart=@PYTHON@ -m src.apps.main.sihoa
+# sihoa.py exits with status 0 even after a fatal error, so restart on any exit, not only on failure
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
